@@ -1,18 +1,17 @@
 package com.mtheusvianna.taptopixassist.service
 
 import android.content.Intent
-import android.net.Uri
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import com.mtheusvianna.domain.entity.Command
 import com.mtheusvianna.domain.entity.StatusWord
 import com.mtheusvianna.taptopixassist.common.model.TapToPixAid
-import com.mtheusvianna.taptopixassist.common.util.parsePayloadToNdefMessageAndGetUri
+import com.mtheusvianna.taptopixassist.common.util.parsePayloadToNdefMessageAndGetUriAsDecodedString
 import com.mtheusvianna.taptopixassist.presentation.R
 
 class TapToPixService : HostApduService() {
 
-    private var uri: Uri? = null
+    private var decodedUriAsString: String? = null
 
     override fun processCommandApdu(p0: ByteArray?, p1: Bundle?): ByteArray? {
         val command = p0?.let { Command.from(it) }
@@ -39,7 +38,7 @@ class TapToPixService : HostApduService() {
 
     private fun handle(updateBinary: Command.UpdateBinary): StatusWord {
         return try {
-            uri = updateBinary.parsePayloadToNdefMessageAndGetUri()
+            decodedUriAsString = updateBinary.parsePayloadToNdefMessageAndGetUriAsDecodedString()
             StatusWord.Success
         } catch (e: Exception) {
             StatusWord.NoPreciseDiagnosis
@@ -47,9 +46,9 @@ class TapToPixService : HostApduService() {
     }
 
     private fun broadcastUriIfReceived() {
-        uri?.let {
+        decodedUriAsString?.let {
             val intent = Intent(getString(R.string.action_tap_to_pix_received)).apply {
-                putExtra(getString(R.string.extra_tap_to_pix_uri), uri.toString())
+                putExtra(getString(R.string.extra_tap_to_pix_uri), decodedUriAsString)
             }
             sendBroadcast(intent)
         }
