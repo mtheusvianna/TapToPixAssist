@@ -46,7 +46,7 @@ sealed class Command(override val bytes: ByteArray) : Apdu {
                 val lcByteIndex = 4
                 val length = bytes[lcByteIndex].toInt() and 0xFF
                 val payload = ByteArray(length).also {
-                    val endIndex = min(payloadStartIndex + length, bytes.size - payloadStartIndex)
+                    val endIndex = min(payloadStartIndex + length, bytes.size)
                     bytes.copyInto(it, 0, payloadStartIndex, endIndex)
                 }
                 payload
