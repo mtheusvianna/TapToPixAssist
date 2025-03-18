@@ -56,9 +56,10 @@ class TapToPixAssistActivity : AppCompatActivity() {
         )
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onPause() {
+        super.onPause()
         unregisterReceiver(tapToPixReceivedBroadcastReceiver)
+        unsetPreferredService()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -93,10 +94,14 @@ class TapToPixAssistActivity : AppCompatActivity() {
                             .setPreferredService(this, serviceComponent)
                     }
                     // can't unset on fragment since the activity's onPause is called before the fragment's onPause
-                    else -> CardEmulation.getInstance(nfcAdapter).unsetPreferredService(this)
+                    else -> unsetPreferredService()
                 }
             }
         }
+    }
+
+    private fun unsetPreferredService() {
+        CardEmulation.getInstance(nfcAdapter).unsetPreferredService(this)
     }
 
     private val tapToPixReceivedBroadcastReceiver = object : BroadcastReceiver() {
