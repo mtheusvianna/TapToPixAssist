@@ -3,10 +3,11 @@ package com.mtheusvianna.taptopixassist.service
 import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
+import android.widget.Toast
 import com.mtheusvianna.domain.entity.Command
 import com.mtheusvianna.domain.entity.StatusWord
 import com.mtheusvianna.taptopixassist.common.model.TapToPixAid
-import com.mtheusvianna.taptopixassist.common.util.parsePayloadToNdefMessageAndGetUriAsDecodedString
+import com.mtheusvianna.taptopixassist.common.util.parsePayloadToNdefMessageAndGetDecodedUriAsString
 import com.mtheusvianna.taptopixassist.presentation.R
 
 class TapToPixService : HostApduService() {
@@ -16,6 +17,13 @@ class TapToPixService : HostApduService() {
     override fun processCommandApdu(p0: ByteArray?, p1: Bundle?): ByteArray? {
         val command = p0?.let { Command.from(it) }
         val statusWord = handle(command)
+
+        Toast.makeText(
+            this,
+            "${command?.let {it::class.java.simpleName} ?: ""}: ${statusWord::class.java.simpleName}",
+            Toast.LENGTH_SHORT
+        ).show()
+
         return statusWord.bytes
     }
 
@@ -38,7 +46,7 @@ class TapToPixService : HostApduService() {
 
     private fun handle(updateBinary: Command.UpdateBinary): StatusWord {
         return try {
-            decodedUriAsString = updateBinary.parsePayloadToNdefMessageAndGetUriAsDecodedString()
+            decodedUriAsString = updateBinary.parsePayloadToNdefMessageAndGetDecodedUriAsString()
             StatusWord.Success
         } catch (e: Exception) {
             StatusWord.NoPreciseDiagnosis
