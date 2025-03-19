@@ -7,7 +7,7 @@ import com.mtheusvianna.domain.entity.Command
 import java.net.URLDecoder
 
 @Throws(NullPointerException::class, FormatException::class)
-fun Command.UpdateBinary.parsePayloadToNdefMessageAndGetDecodedUriAsString(): String? {
+fun Command.UpdateBinary.parsePayloadToNdefMessageAndDecodeUri(): String? {
     val payload = getPayload()
     val message = NdefMessage(payload)
     val record = message.records[0] // no need to check for null or array length >= 1 as per the documentation

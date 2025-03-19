@@ -8,7 +8,7 @@ import com.mtheusvianna.taptopixassist.presentation.R
 sealed class TapToPixAid : Aid() {
 
     class Google(context: Context) : TapToPixAid() {
-        override val hex: String = context.getString(R.string.tap_and_pix_google_aid)
+        override val hex: String = context.getString(R.string.aid_tap_to_pix_google)
         override val bytes: ByteArray = hex.decodeHex()
     }
 

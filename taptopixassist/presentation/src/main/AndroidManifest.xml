@@ -3,10 +3,11 @@
 
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application>
         <service
-            android:name="com.mtheusvianna.taptopixassist.service.TapToPixService"
+            android:name="com.mtheusvianna.taptopixassist.service.DefaultTapToPixService"
             android:exported="true"
             android:permission="android.permission.BIND_NFC_SERVICE">
             <intent-filter>
@@ -15,7 +16,20 @@
 
             <meta-data
                 android:name="android.nfc.cardemulation.host_apdu_service"
-                android:resource="@xml/host_apdu_service" />
+                android:resource="@xml/host_apdu_service_aid_google" />
+        </service>
+
+        <service
+            android:name="com.mtheusvianna.taptopixassist.service.ForegroundOnlyTapToPixService"
+            android:exported="true"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/host_apdu_service_aid_none" />
         </service>
     </application>
 

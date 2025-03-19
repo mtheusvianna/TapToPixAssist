@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:apduServiceBanner="@drawable/contactless_on"
+    android:description="@string/feature_name"
+    android:requireDeviceUnlock="false">
+    <aid-group
+        android:category="payment"
+        android:description="@string/feature_name"> <!--    TODO    -->
+        <aid-filter android:name="@string/aid_tap_to_pix_google" />
+    </aid-group>
+</host-apdu-service>

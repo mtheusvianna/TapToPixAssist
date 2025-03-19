@@ -10,8 +10,6 @@ import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.cardemulation.CardEmulation
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.VibratorManager
 import androidx.activity.viewModels
 import androidx.annotation.IdRes
 import androidx.annotation.RequiresPermission
@@ -25,7 +23,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.mtheusvianna.taptopixassist.presentation.R
 import com.mtheusvianna.taptopixassist.presentation.databinding.ActivityTapToPixAssistBinding
-import com.mtheusvianna.taptopixassist.service.TapToPixService
+import com.mtheusvianna.taptopixassist.service.ForegroundOnlyTapToPixService
 import com.mtheusvianna.taptopixassist.ui.dashboard.DashboardViewModel
 import com.mtheusvianna.taptopixassist.ui.notifications.NotificationsViewModel
 
@@ -40,20 +38,15 @@ class TapToPixAssistActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityTapToPixAssistBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+        setContentView()
+        initNfcAdapter()
         setUpNav()
     }
 
     override fun onResume() {
         super.onResume()
-        notificationsViewModel.updateNfcStatusWith(isAvailable = nfcAdapter?.isEnabled == true)
-        registerReceiver(
-            tapToPixReceivedBroadcastReceiver,
-            IntentFilter(getString(R.string.action_tap_to_pix_received)),
-            RECEIVER_EXPORTED
-        )
+        registerTapToPixReceivedBroadcastReceiver()
+        updateNfcAdapterStatus()
     }
 
     override fun onPause() {
@@ -71,9 +64,14 @@ class TapToPixAssistActivity : AppCompatActivity() {
         }
     }
 
-    private fun findNavController(): NavController = findNavController(R.id.nav_host_fragment_activity_main)
+    private fun setContentView() {
+        binding = ActivityTapToPixAssistBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+    }
 
-    private fun currentDestinationIdIsEqualTo(@IdRes id: Int) = findNavController().currentDestination?.id == id
+    private fun initNfcAdapter() {
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+    }
 
     private fun setUpNav() {
         val navView: BottomNavigationView = binding.navView
@@ -84,24 +82,28 @@ class TapToPixAssistActivity : AppCompatActivity() {
 
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+        addTogglePreferredServiceOnDestinationChangedListenerTo(navController)
+    }
 
+    private fun findNavController(): NavController = findNavController(R.id.nav_host_fragment_activity_main)
+
+    private fun addTogglePreferredServiceOnDestinationChangedListenerTo(navController: NavController) {
         navController.addOnDestinationChangedListener { _, destination, _ ->
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
                 when (destination.id) {
-                    R.id.navigation_notifications -> {
-                        val serviceComponent = ComponentName(packageName, TapToPixService::class.java.name)
-                        CardEmulation.getInstance(nfcAdapter)
-                            .setPreferredService(this, serviceComponent)
-                    }
-                    // can't unset on fragment since the activity's onPause is called before the fragment's onPause
+                    R.id.navigation_notifications -> setTapToPixServiceAsPreferredService()
                     else -> unsetPreferredService()
                 }
             }
         }
     }
 
-    private fun unsetPreferredService() {
-        CardEmulation.getInstance(nfcAdapter).unsetPreferredService(this)
+    private fun registerTapToPixReceivedBroadcastReceiver() {
+        registerReceiver(
+            tapToPixReceivedBroadcastReceiver,
+            IntentFilter(getString(R.string.action_tap_to_pix_received)),
+            RECEIVER_EXPORTED
+        )
     }
 
     private val tapToPixReceivedBroadcastReceiver = object : BroadcastReceiver() {
@@ -109,13 +111,40 @@ class TapToPixAssistActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val isActionTapToPixReceived = intent?.action == getString(R.string.action_tap_to_pix_received)
             if (isActionTapToPixReceived) {
-                val value = intent.getStringExtra(getString(R.string.extra_tap_to_pix_uri))
+                val value = intent.getStringExtra(getString(R.string.extra_tap_to_pix_payload))
                 if (currentDestinationIdIsEqualTo(R.id.navigation_notifications)) {
                     value?.let { notificationsViewModel.updateTextWith(value) }
-                    val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
-                    vibratorManager.defaultVibrator.vibrate(VibrationEffect.createOneShot(500, 255))
                 }
             }
         }
     }
+
+    private fun currentDestinationIdIsEqualTo(@IdRes id: Int) = findNavController().currentDestination?.id == id
+
+    private fun updateNfcAdapterStatus() {
+        notificationsViewModel.updateNfcStatusWith(isAvailable = nfcAdapter?.isEnabled == true)
+    }
+
+    private fun setTapToPixServiceAsPreferredService() {
+        val service = getTapToPixServiceComponentName()
+        CardEmulation.getInstance(nfcAdapter).apply {
+            registerAidsForService(
+                service,
+                CardEmulation.CATEGORY_OTHER,
+                listOf(getString(R.string.aid_tap_to_pix_google))
+            )
+            setPreferredService(this@TapToPixAssistActivity, service)
+        }
+    }
+
+    private fun unsetPreferredService() {
+        CardEmulation.getInstance(nfcAdapter).apply {
+            val service = getTapToPixServiceComponentName()
+            removeAidsForService(service, CardEmulation.CATEGORY_PAYMENT)
+            unsetPreferredService(this@TapToPixAssistActivity)
+        }
+    }
+
+    private fun getTapToPixServiceComponentName(): ComponentName =
+        ComponentName(packageName, ForegroundOnlyTapToPixService::class.java.name)
 }
