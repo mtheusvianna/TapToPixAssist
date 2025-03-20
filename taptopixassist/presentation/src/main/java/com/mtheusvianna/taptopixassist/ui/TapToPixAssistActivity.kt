@@ -140,7 +140,7 @@ class TapToPixAssistActivity : AppCompatActivity() {
     private fun unsetPreferredService() {
         CardEmulation.getInstance(nfcAdapter).apply {
             val service = getTapToPixServiceComponentName()
-            removeAidsForService(service, CardEmulation.CATEGORY_PAYMENT)
+            removeAidsForService(service, CardEmulation.CATEGORY_OTHER)
             unsetPreferredService(this@TapToPixAssistActivity)
         }
     }
