@@ -8,19 +8,19 @@ import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.VibratorManager
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.mtheusvianna.domain.entity.Command
 import com.mtheusvianna.domain.entity.StatusWord
 import com.mtheusvianna.taptopixassist.common.model.TapToPixAid
-import com.mtheusvianna.taptopixassist.common.util.parsePayloadToNdefMessageAndDecodeUri
+import com.mtheusvianna.taptopixassist.common.util.parseToNdefMessageAndGetUri
 import com.mtheusvianna.taptopixassist.presentation.R
 import com.mtheusvianna.taptopixassist.ui.TapToPixAssistActivity
 
 sealed class TapToPixService : HostApduService() {
 
     private var vibratorManager: VibratorManager? = null
-    private var payload: String? = null
+    private var isFirstCommand: Boolean = true
+    private var payload: ByteArray = ByteArray(0)
 
     abstract fun handle(payload: String)
 
@@ -30,20 +30,30 @@ sealed class TapToPixService : HostApduService() {
     }
 
     override fun processCommandApdu(p0: ByteArray?, p1: Bundle?): ByteArray? {
-        val command = p0?.let { Command.from(it) }
-        val statusWord = handle(command)
-
-        Toast.makeText(
-            this,
-            "${command?.let { it::class.java.simpleName } ?: ""}: ${statusWord::class.java.simpleName}",
-            Toast.LENGTH_SHORT
-        ).show()
-
-        return statusWord.bytes
+        vibrateIfFirstCommand()
+        return process(incomingCommand = p0)
     }
 
     override fun onDeactivated(p0: Int) {
-        payload?.let { handle(payload = it) }
+        isFirstCommand = true
+        processPayload()
+    }
+
+    private fun vibrateIfFirstCommand() {
+        if (isFirstCommand) {
+            isFirstCommand = false
+            vibratorManager?.defaultVibrator?.vibrate(VibrationEffect.createOneShot(500, 255)) // TODO
+        }
+    }
+
+    private fun process(incomingCommand: ByteArray?): ByteArray {
+        val statusWord = try {
+            val command = incomingCommand?.let { Command.from(it) }
+            handle(command)
+        } catch (e: Exception) {
+            StatusWord.NoPreciseDiagnosis
+        }
+        return statusWord.bytes
     }
 
     private fun handle(command: Command?): StatusWord {
@@ -55,22 +65,30 @@ sealed class TapToPixService : HostApduService() {
     }
 
     private fun handle(select: Command.Select): StatusWord {
-        vibrate()
         val isSelectCommandWithGoogleAid = select == Command.Select.buildWith(TapToPixAid.Google(this))
         return if (isSelectCommandWithGoogleAid) StatusWord.Success else StatusWord.UnknownCommand
     }
 
+    @Throws(IllegalStateException::class)
     private fun handle(updateBinary: Command.UpdateBinary): StatusWord {
-        return try {
-            payload = updateBinary.parsePayloadToNdefMessageAndDecodeUri()
-            StatusWord.Success
-        } catch (e: Exception) {
-            StatusWord.NoPreciseDiagnosis
+        val commandPayload = updateBinary.getPayload()
+        checkNotNull(commandPayload)
+        if (payload.isEmpty()) {
+            payload = commandPayload
+        } else {
+            payload += commandPayload
         }
+        return StatusWord.Success
     }
 
-    private fun vibrate() {
-        vibratorManager?.defaultVibrator?.vibrate(VibrationEffect.createOneShot(500, 255)) // TODO
+    private fun processPayload() {
+        try {
+            val uri = payload.parseToNdefMessageAndGetUri()
+            uri?.let { handle(payload = it.toString()) }
+        } catch (e: Exception) {
+            // TODO failed
+        }
+        payload = ByteArray(0)
     }
 }
 

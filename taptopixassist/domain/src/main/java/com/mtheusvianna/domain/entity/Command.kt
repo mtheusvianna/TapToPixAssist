@@ -1,5 +1,6 @@
 package com.mtheusvianna.domain.entity
 
+import com.mtheusvianna.domain.util.ApduConstants
 import kotlin.math.min
 
 sealed class Command(override val bytes: ByteArray) : Apdu {
@@ -57,7 +58,7 @@ sealed class Command(override val bytes: ByteArray) : Apdu {
             val header = byteArrayOf(0x00.toByte(), 0xD6.toByte(), 0x00.toByte(), 0x00.toByte())
 
             fun buildWith(payload: ByteArray): UpdateBinary {
-                val maximumPayloadSize = 255
+                val maximumPayloadSize = ApduConstants.MAX_PAYLOAD_SIZE
                 val length = payload.size
                 require(length <= maximumPayloadSize)
                 val bytes = header + payload.size.toByte() + payload

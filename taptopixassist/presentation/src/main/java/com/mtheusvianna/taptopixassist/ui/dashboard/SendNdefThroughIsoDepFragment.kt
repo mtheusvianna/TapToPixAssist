@@ -20,6 +20,9 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.mtheusvianna.domain.entity.Command
+import com.mtheusvianna.domain.util.ApduConstants
+import com.mtheusvianna.domain.util.ByteArrayChunkIterator
+import com.mtheusvianna.domain.util.isSuccessStatusWord
 import com.mtheusvianna.taptopixassist.common.model.TapToPixAid
 import com.mtheusvianna.taptopixassist.common.util.UriConstants
 import com.mtheusvianna.taptopixassist.presentation.databinding.FragmentDashboardBinding
@@ -90,47 +93,52 @@ internal class SendNdefThroughIsoDepFragment : Fragment(), TextWatcher {
     }
 
     fun handle(tag: Tag) {
-        val isoDep = IsoDep.get(tag)
         try {
+            val isoDep = IsoDep.get(tag)
             isoDep.connect()
 
             val selectApdu = Command.Select.buildWith(TapToPixAid.Google(requireActivity())).bytes
             val selectResponse = isoDep.transceive(selectApdu)
 
-            fun ByteArray.isSuccess() =
-                size >= 2 && selectResponse[size - 2] == 0x90.toByte() && selectResponse[size - 1] == 0x00.toByte()
-
-            if (selectResponse.isSuccess()) {
+            if (selectResponse.isSuccessStatusWord()) {
                 dashboardViewModel.text.value?.let {
                     val uri = byteArrayOf(UriConstants.IdentifierCode.NO_URI_PREFIX) + it.toByteArray()
                     val record = NdefRecord(
                         NdefRecord.TNF_WELL_KNOWN,
                         NdefRecord.RTD_URI,
-                        ByteArray(0),
+                        null,
                         uri
                     )
                     val ndefMessage = NdefMessage(record)
-                    val updateBinaryCommand = Command.UpdateBinary.buildWith(ndefMessage.toByteArray()).bytes
-                    val updateResponse = isoDep.transceive(updateBinaryCommand)
-                    if (updateResponse.isSuccess()) {
-                        Toast.makeText(context, "Update succeeded", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(context, "Update failed", Toast.LENGTH_LONG).show()
-                    }
+                    val payload = ndefMessage.toByteArray()
+                    process(payload, with = isoDep)
                 }
             }
+
+            isoDep.close()
         } catch (e: IOException) {
             e
-        } finally {
-            isoDep.close()
         }
+    }
+
+    private fun process(payload: ByteArray, with: IsoDep) {
+        val chunkedIterator = ByteArrayChunkIterator(payload, ApduConstants.MAX_PAYLOAD_SIZE)
+        for (chunk in chunkedIterator) {
+            val updateBinaryCommand = Command.UpdateBinary.buildWith(chunk).bytes
+            val updateResponse = with.transceive(updateBinaryCommand)
+            if (updateResponse.isSuccessStatusWord()) {
+                continue
+            } else {
+                Toast.makeText(context, "Update failed", Toast.LENGTH_LONG).show()
+                return
+            }
+        }
+        Toast.makeText(context, "Update succeeded", Toast.LENGTH_LONG).show()
     }
 
     override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
 
     override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
 
-    override fun afterTextChanged(s: Editable?) {
-        dashboardViewModel.updateTextWith(s.toString())
-    }
+    override fun afterTextChanged(s: Editable?) { dashboardViewModel.updateTextWith(s.toString()) }
 }
