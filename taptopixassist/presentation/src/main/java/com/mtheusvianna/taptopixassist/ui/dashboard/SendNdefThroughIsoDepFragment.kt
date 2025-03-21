@@ -25,6 +25,7 @@ import com.mtheusvianna.domain.util.ByteArrayChunkIterator
 import com.mtheusvianna.domain.util.lastTwoBytesMatchesSuccessStatusWord
 import com.mtheusvianna.taptopixassist.common.model.TapToPixAid
 import com.mtheusvianna.taptopixassist.common.util.UriConstants
+import com.mtheusvianna.taptopixassist.presentation.R
 import com.mtheusvianna.taptopixassist.presentation.databinding.FragmentDashboardBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -140,5 +141,9 @@ internal class SendNdefThroughIsoDepFragment : Fragment(), TextWatcher {
 
     override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
 
-    override fun afterTextChanged(s: Editable?) { dashboardViewModel.updateTextWith(s.toString()) }
+    override fun afterTextChanged(s: Editable?) {
+        val text = s.toString()
+        dashboardViewModel.updateTextWith(text)
+        binding.textCharCount.text = getString(R.string.edit_text_char_count, text.length)
+    }
 }

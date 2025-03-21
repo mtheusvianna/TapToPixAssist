@@ -5,6 +5,8 @@
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
 
+    <string name="edit_text_char_count">%1$d caracteres</string>
+
     <string name="aid_tap_to_pix_google">A00000047643276C1FDE7A39B9C05716</string>
     <string name="action_tap_to_pix_received">com.mtheusvianna.taptopixassist.action.TapToPixReceived</string>
     <string name="extra_tap_to_pix_payload">tap_to_pix_payload</string>
