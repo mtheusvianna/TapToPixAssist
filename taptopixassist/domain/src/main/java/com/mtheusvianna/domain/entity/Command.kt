@@ -40,21 +40,31 @@ sealed class Command(override val bytes: ByteArray) : Apdu {
         override val header: ByteArray
             get() = UpdateBinary.header
 
+        fun hasPayload(): Boolean {
+            val hasPayload = bytes.size >= PAYLOAD_START_INDEX + 1
+            return hasPayload
+        }
+
+        fun getPayloadLength(): Int {
+            val length = if (hasPayload()) bytes[LC_BYTE_INDEX].toInt() and 0xFF else 0
+            return length
+        }
+
         fun getPayload(): ByteArray? {
-            val payloadStartIndex = 5
-            val hasPayload = bytes.size >= payloadStartIndex + 1
-            return if (hasPayload) {
-                val lcByteIndex = 4
-                val length = bytes[lcByteIndex].toInt() and 0xFF
-                val payload = ByteArray(length).also {
-                    val endIndex = min(payloadStartIndex + length, bytes.size)
-                    bytes.copyInto(it, 0, payloadStartIndex, endIndex)
+            val payload = if (hasPayload()) {
+                val length = getPayloadLength()
+                ByteArray(length).also {
+                    val endIndex = min(PAYLOAD_START_INDEX + length, bytes.size)
+                    bytes.copyInto(it, 0, PAYLOAD_START_INDEX, endIndex)
                 }
-                payload
             } else null
+            return payload
         }
 
         companion object {
+            const val PAYLOAD_START_INDEX = 5
+            const val LC_BYTE_INDEX = 4
+
             val header = byteArrayOf(0x00.toByte(), 0xD6.toByte(), 0x00.toByte(), 0x00.toByte())
 
             fun buildWith(payload: ByteArray): UpdateBinary {
