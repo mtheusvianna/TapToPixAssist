@@ -7,7 +7,7 @@ fun String.decodeHex(): ByteArray {
     return chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 }
 
-fun ByteArray.isSuccessStatusWord() =
+fun ByteArray.lastTwoBytesMatchesSuccessStatusWord() =
     size >= 2 && byteArrayOf(
         getOrNull(size - 2) ?: 0x00,
         getOrNull(size - 1) ?: 0x00

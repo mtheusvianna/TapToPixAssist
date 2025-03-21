@@ -22,7 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import com.mtheusvianna.domain.entity.Command
 import com.mtheusvianna.domain.util.ApduConstants
 import com.mtheusvianna.domain.util.ByteArrayChunkIterator
-import com.mtheusvianna.domain.util.isSuccessStatusWord
+import com.mtheusvianna.domain.util.lastTwoBytesMatchesSuccessStatusWord
 import com.mtheusvianna.taptopixassist.common.model.TapToPixAid
 import com.mtheusvianna.taptopixassist.common.util.UriConstants
 import com.mtheusvianna.taptopixassist.presentation.databinding.FragmentDashboardBinding
@@ -100,7 +100,7 @@ internal class SendNdefThroughIsoDepFragment : Fragment(), TextWatcher {
             val selectApdu = Command.Select.buildWith(TapToPixAid.Google(requireActivity())).bytes
             val selectResponse = isoDep.transceive(selectApdu)
 
-            if (selectResponse.isSuccessStatusWord()) {
+            if (selectResponse.lastTwoBytesMatchesSuccessStatusWord()) {
                 dashboardViewModel.text.value?.let {
                     val uri = byteArrayOf(UriConstants.IdentifierCode.NO_URI_PREFIX) + it.toByteArray()
                     val record = NdefRecord(
@@ -126,7 +126,7 @@ internal class SendNdefThroughIsoDepFragment : Fragment(), TextWatcher {
         for (chunk in chunkedIterator) {
             val updateBinaryCommand = Command.UpdateBinary.buildWith(chunk).bytes
             val updateResponse = with.transceive(updateBinaryCommand)
-            if (updateResponse.isSuccessStatusWord()) {
+            if (updateResponse.lastTwoBytesMatchesSuccessStatusWord()) {
                 continue
             } else {
                 Toast.makeText(context, "Update failed", Toast.LENGTH_LONG).show()
