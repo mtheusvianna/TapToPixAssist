@@ -6,27 +6,98 @@
     android:layout_height="match_parent"
     tools:context="com.mtheusvianna.taptopixassist.ui.dashboard.SendNdefThroughIsoDepFragment">
 
-    <EditText
-        android:id="@+id/text_dashboard"
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:id="@+id/aid_container_dashboard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="24dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@id/payload_container_dashboard"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/aid_text_dashboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Digite um AID para o comando SELECT (ou default)"
+            android:maxLength="255"
+            android:maxLines="4"
+            android:textAlignment="viewStart"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/aid_text_char_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:textSize="12sp"
+            tools:text="250/255" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/payload_container_dashboard"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:hint="Digite um payload e aproxime (Google Pay aceita até 250 caracteres)"
-        android:maxLength="1024"
-        android:textAlignment="viewStart"
-        android:textSize="20sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@id/chunked_check_box"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/aid_container_dashboard">
+
+        <EditText
+            android:id="@+id/payload_text_dashboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Digite um payload para o comando UPDATE BINARY e aproxime"
+            android:maxLength="1024"
+            android:maxLines="8"
+            android:textAlignment="viewStart"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/payload_text_char_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:textSize="12sp"
+            tools:text="250/1024" />
+
+    </LinearLayout>
+
+    <CheckBox
+        android:id="@+id/chunked_check_box"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginBottom="24dp"
+        android:checked="false"
+        android:ellipsize="end"
+        android:text="Particionar payload em múltiplos comandos contendo até 255 bytes"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/latest_status_text_dashboard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/payload_container_dashboard" />
 
     <TextView
-        android:id="@+id/text_char_count"
-        android:layout_width="wrap_content"
+        android:id="@+id/latest_status_text_dashboard"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:ellipsize="end"
+        android:gravity="end"
         android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="@id/text_dashboard"
-        app:layout_constraintTop_toBottomOf="@id/text_dashboard"
-        tools:text="250 caracteres" />
+        app:layout_constraintBottom_toBottomOf="@id/chunked_check_box"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/chunked_check_box"
+        app:layout_constraintTop_toTopOf="@id/chunked_check_box"
+        tools:text="update binary failed" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

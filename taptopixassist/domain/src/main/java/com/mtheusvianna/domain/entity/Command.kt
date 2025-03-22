@@ -33,45 +33,72 @@ sealed class Command(override val bytes: ByteArray) : Apdu {
 
     class UpdateBinary internal constructor(bytes: ByteArray) : Command(bytes) {
         init {
-            val headerMatches = bytes.copyOf(CLA_INS_P1_P2_TOTAL_SIZE).contentEquals(UpdateBinary.header)
-            require(headerMatches)
+            val headerMatchesUpToP1 = defaultHeaderUpToP1Matches(bytes)
+            require(headerMatchesUpToP1)
         }
 
         override val header: ByteArray
-            get() = UpdateBinary.header
+            get() = bytes.copyOf(CLA_INS_P1_P2_TOTAL_SIZE)
 
-        fun hasPayload(): Boolean {
-            val hasPayload = bytes.size >= PAYLOAD_START_INDEX + 1
-            return hasPayload
-        }
+        val payloadStartIndex: Int?
+            get() {
+                val firstLcByte = bytes.getOrNull(LC_START_INDEX) ?: return null
+                val payloadStartIndex = if (firstLcByte == 0x00.toByte()) 7 else 5
+                if (bytes.lastIndex <= payloadStartIndex) return null
+                return payloadStartIndex
+            }
 
-        fun getPayloadLength(): Int {
-            val length = if (hasPayload()) bytes[LC_BYTE_INDEX].toInt() and 0xFF else 0
-            return length
-        }
+        val payloadLength: Int
+            get() {
+                val firstLcByte = bytes.getOrNull(LC_START_INDEX) ?: return 0
+                val length = when (firstLcByte) {
+                    0x00.toByte() -> {
+                        val secondLcByte = (bytes.getOrNull(5)?.toInt() ?: return 0) and 0xFF
+                        val thirdLcByte = (bytes.getOrNull(6)?.toInt() ?: return 0) and 0xFF
+                        (secondLcByte shl 8) + thirdLcByte
+                    }
+
+                    else -> firstLcByte.toInt() and 0xFF
+                }
+                return length
+            }
 
         fun getPayload(): ByteArray? {
-            val payload = if (hasPayload()) {
-                val length = getPayloadLength()
-                ByteArray(length).also {
-                    val endIndex = min(PAYLOAD_START_INDEX + length, bytes.size)
-                    bytes.copyInto(it, 0, PAYLOAD_START_INDEX, endIndex)
+            val startIndex = payloadStartIndex ?: return null
+            val payloadLength = payloadLength
+            val hasPayload = payloadLength > 0
+            val payload = if (hasPayload) {
+                ByteArray(payloadLength).also {
+                    val endIndex = min(startIndex + payloadLength, bytes.size)
+                    // src.length=271 srcPos=5 dst.length=264 dstPos=0 length=266
+                    bytes.copyInto(it, 0, startIndex, endIndex)
                 }
             } else null
             return payload
         }
 
         companion object {
-            const val PAYLOAD_START_INDEX = 5
-            const val LC_BYTE_INDEX = 4
+            const val LC_START_INDEX = 4
 
-            val header = byteArrayOf(0x00.toByte(), 0xD6.toByte(), 0x00.toByte(), 0x00.toByte())
+            val defaultHeader = byteArrayOf(0x00.toByte(), 0xD6.toByte(), 0x00.toByte(), 0x00.toByte())
+            fun defaultHeaderUpToP1Matches(bytes: ByteArray) =
+                bytes.copyOf(CLA_INS_P1_TOTAL_SIZE).contentEquals(defaultHeader.copyOf(CLA_INS_P1_TOTAL_SIZE))
 
-            fun buildWith(payload: ByteArray): UpdateBinary {
-                val maximumPayloadSize = ApduConstants.MAX_PAYLOAD_SIZE
-                val length = payload.size
-                require(length <= maximumPayloadSize)
-                val bytes = header + payload.size.toByte() + payload
+            @Throws(IllegalArgumentException::class)
+            fun buildWith(payload: ByteArray, p2: Byte? = null): UpdateBinary {
+                val payloadLength = payload.size
+                val commandHeader = p2?.let { defaultHeader.copyOf().apply { set(3, p2) } } ?: defaultHeader
+                require(payloadLength <= ApduConstants.MAX_PAYLOAD_LENGTH_FOR_3_BYTE_LC)
+                val isExtendedSize = payloadLength > ApduConstants.MAX_PAYLOAD_LENGTH_FOR_1_BYTE_LC
+                val lcBytes = if (isExtendedSize) {
+                    val firstLcByte = 0x00.toByte()
+                    val secondLcByte = (payloadLength shr 8).toByte()
+                    val thirdLcByte = (payloadLength and 0xFF).toByte()
+                    byteArrayOf(firstLcByte, secondLcByte, thirdLcByte)
+                } else {
+                    byteArrayOf(payload.size.toByte())
+                }
+                val bytes = commandHeader + lcBytes + payload
                 return UpdateBinary(bytes)
             }
         }
@@ -101,13 +128,14 @@ sealed class Command(override val bytes: ByteArray) : Apdu {
     }
 
     companion object {
+        const val CLA_INS_P1_TOTAL_SIZE = 3
         const val CLA_INS_P1_P2_TOTAL_SIZE = 4
 
         fun from(bytes: ByteArray): Command {
             val header = bytes.copyOf(CLA_INS_P1_P2_TOTAL_SIZE)
             val command = when {
                 header.contentEquals(Select.header) -> Select(bytes)
-                header.contentEquals(UpdateBinary.header) -> UpdateBinary(bytes)
+                UpdateBinary.defaultHeaderUpToP1Matches(bytes) -> UpdateBinary(bytes)
                 else -> Unknown(bytes)
             }
             return command

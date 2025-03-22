@@ -12,6 +12,10 @@ sealed class TapToPixAid : Aid() {
         override val bytes: ByteArray = hex.decodeHex()
     }
 
+    class Unknown(override val hex: String) : TapToPixAid() {
+        override val bytes: ByteArray = hex.decodeHex()
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

@@ -21,6 +21,7 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.mtheusvianna.taptopixassist.common.model.TapToPixAid
 import com.mtheusvianna.taptopixassist.presentation.R
 import com.mtheusvianna.taptopixassist.presentation.databinding.ActivityTapToPixAssistBinding
 import com.mtheusvianna.taptopixassist.service.ForegroundOnlyTapToPixService
@@ -38,6 +39,7 @@ class TapToPixAssistActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        dashboardViewModel.setDefault(aid = TapToPixAid.Google(this))
         setContentView()
         initNfcAdapter()
         setUpNav()
@@ -60,7 +62,7 @@ class TapToPixAssistActivity : AppCompatActivity() {
         val isActionTagDiscovered = intent.action == NfcAdapter.ACTION_TAG_DISCOVERED
         if (isActionTagDiscovered && currentDestinationIdIsEqualTo(R.id.navigation_dashboard)) {
             val tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag::class.java)
-            tag?.let { dashboardViewModel.emitDiscovered(tag) }
+            tag?.let { dashboardViewModel.handle(tag) }
         }
     }
 
